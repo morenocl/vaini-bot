@@ -1,23 +1,43 @@
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler
 import sys
 
 
-# handlers
-add_handler = None
-remove_handler = None
-info_handler = None
+menu_super = ['add', 'remove', 'info', 'back']
+
+def build_menu(buttons,
+               n_cols,
+               header_buttons=None,
+               footer_buttons=None):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+    if header_buttons:
+        menu.insert(0, [header_buttons])
+    if footer_buttons:
+        menu.append([footer_buttons])
+    return menu
+
+def show_menu(update, context):
+    button_list = [InlineKeyboardButton(b, callback_data=b) for b in menu_super]
+    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=2))
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Diga:", reply_markup=reply_markup)
 
 # Info handler
+def back():
+    del context.chat_data['state']
+    context.chat_data['funcion'] = 'iii'
+    context.bot.send_message(chat_id=id, text='Saliste al super')
+
 def info(update, context):
     print('Funcion info.')
     lista, msj = '',  ''
     if len(context.user_data) != 0:
         for k in context.user_data:
             lista += str(context.user_data[k]) + ' ' + k + ',\n'
-        msj = 'Tu lista:\n' + lista[:-2] + '.'
+        msj = lista[:-2] + '.'
     else:
         msj = 'La lista esta vacia.'
     context.bot.send_message(chat_id=update.effective_chat.id, text=msj)
+    show_menu(update, context)
     print('context.bot_data', context.bot_data)
     print('context.chat_data', context.chat_data)
     print('context.user_data: ', context.user_data)
@@ -31,10 +51,16 @@ def get_cantidad(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text='No leo numeros romanos')
     else:
         ultimo_prod = context.chat_data['ultimo']
-        context.user_data[ultimo_prod] = cant
+        if cant <= 0:
+            del context.user_data[ultimo_prod]
+            msj = 'Eliminaste ' + ultimo_prod + '!'
+        else:
+            context.user_data[ultimo_prod] = cant
+            msj = str(cant) + ' ' + ultimo_prod + '!'
         context.chat_data['ultimo'] = None
         context.chat_data['state'] = 'nuevo'
-        context.bot.send_message(chat_id=update.effective_chat.id, text=str(cant) + ' ' + ultimo_prod + '!')
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msj)
+        show_menu(update, context)
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
@@ -43,18 +69,13 @@ def get_producto(producto, context, id):
     context.user_data[producto] = 1
     context.chat_data['ultimo'] = producto
     context.chat_data['state'] = 'cant'
-    context.bot.send_message(chat_id=id, text='Agregaste: '+producto+' x1. Mas de uno?')
+    context.bot.send_message(chat_id=id, text='Cuantas unidades?')
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
 def add(update, context):
     print('Funcion add.')
-    if len(context.args) == 0:
-        context.chat_data['state'] = 'prod'
-        context.bot.send_message(chat_id=update.effective_chat.id, text='Que agregamos a la lista del super?')
-    else:
-        producto = ' '.join(context.args)
-        get_producto(producto, context, update.effective_chat.id)
+    context.chat_data['state'] = 'prod'
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
@@ -63,17 +84,13 @@ def remove_producto(producto, context, id):
     print('Funcion remove_producto.')
     del context.user_data[producto]
     context.bot.send_message(chat_id=id, text='Eliminaste: ' + producto)
+    show_menu(update, context)
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
 def remove(update, context):
     print('Funcion remove.')
-    if len(context.args) == 0:
-        context.chat_data['state'] = 'remove'
-        context.bot.send_message(chat_id=update.effective_chat.id, text='Que quitamos?')
-    else:
-        producto = ' '.join(context.args)
-        remove_producto(producto, context, update.effective_chat.id)
+    context.chat_data['state'] = 'remove'
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
@@ -88,29 +105,8 @@ def responder_super(update, context):
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text='No entiendo :/')
 
-# Manage commands of super
-def agregar_comandos_super(dispatcher):
-    global add_handler, remove_handler, info_handler
-    add_handler = CommandHandler('add', add)
-    dispatcher.add_handler(add_handler)
-    remove_handler = CommandHandler('remove', remove)
-    dispatcher.add_handler(remove_handler)
-    info_handler = CommandHandler('info', info)
-    dispatcher.add_handler(info_handler)
-
-def quitar_comandos_super(dispatcher):
-    dispatcher.remove_handler(add_handler)
-    dispatcher.remove_handler(remove_handler)
-    dispatcher.remove_handler(info_handler)
-
-def comandos_super(context, dispatcher, id):
-    if context.chat_data['funcion'] == 'super':
-        del context.chat_data['state']
-        context.chat_data['funcion'] = 'iii'
-        quitar_comandos_super(dispatcher)
-        context.bot.send_message(chat_id=id, text='Saliste al super')
-    else:
-        context.chat_data['state'] = 'nuevo'
-        context.chat_data['funcion'] = 'super'
-        agregar_comandos_super(dispatcher)
-        context.bot.send_message(chat_id=id, text='Entraste al super')
+def super(update, context):
+    print('Funcion super.')
+    context.chat_data['state'] = 'nuevo'
+    context.chat_data['funcion'] = 'super'
+    show_menu(update, context)

@@ -1,13 +1,14 @@
 #! /bin/python3
 
 from telegram import Bot
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 import logging
 import json
 import os
 from dotenv import load_dotenv
 
-from super import responder_super, comandos_super
+from super import responder_super, super
+from button import button_func
 
 
 load_dotenv()
@@ -28,17 +29,15 @@ def start(update, context):
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
-def super(update, context):
-    print('Funcion super.')
-    comandos_super(context, dispatcher, update.effective_chat.id)
-
 super_handler = CommandHandler('super', super)
 dispatcher.add_handler(super_handler)
 
+query_handler = CallbackQueryHandler(button_func)
+dispatcher.add_handler(query_handler)
+
 def responder_iii(update, context):
     print('Funcion echo.')
-    print(update.message.from_user.first_name + '(' + update.message.from_user.username + '): ')
-    print('            ' + update.message.text)
+    print(update.message.from_user.first_name + '(' + update.message.from_user.username + '): ' + update.message.text)
     msj = update.message.text.replace('a', 'i').replace('e', 'i').replace('o', 'i').replace('u', 'i').replace('A', 'I').replace('E', 'I').replace('O', 'I').replace('U', 'I')
     context.bot.send_message(chat_id=update.effective_chat.id, text=msj)
 
