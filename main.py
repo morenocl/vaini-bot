@@ -9,14 +9,15 @@ from dotenv import load_dotenv
 
 from super import responder_super, super
 from button import button_func
-
+from database import MongodbPersistence
 
 load_dotenv()
 app = os.getenv('APP')
 token = os.getenv('TOKEN')
 entorno = os.getenv('ENTORNO')
 bot = Bot(token)
-updater = Updater(token, use_context=True)
+persistence = MongodbPersistence()
+updater = Updater(token, use_context=True, persistence=persistence)
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                      level=logging.INFO)
@@ -42,11 +43,17 @@ def responder_iii(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=msj)
 
 def echo(update, context):
+    _id = str(update.effective_chat.id)
     try:
-        funcion = context.chat_data['funcion']
+        chat_data = context.chat_data[_id]
     except KeyError:
-        context.chat_data['funcion'] = 'iii'
-        funcion = 'iii'
+        context.chat_data[_id] = {"funcion": 'iii'}
+        chat_data = context.chat_data[_id]
+    try:
+        funcion = chat_data['funcion']
+    except:
+        chat_data['funcion'] = 'iii'
+        funcion = chat_data['funcion']
 
     if funcion == 'super':
         responder_super(update, context)
@@ -78,3 +85,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
