@@ -2,10 +2,12 @@ from pymongo import MongoClient
 from collections import defaultdict
 from telegram.ext import BasePersistence
 from dotenv import load_dotenv
+from copy import deepcopy
 import os
 
 
 class MongodbPersistence(BasePersistence):
+    sqliteConnection = None
 
     def __init__(self,
                  store_user_data=True,
@@ -15,7 +17,7 @@ class MongodbPersistence(BasePersistence):
         super(MongodbPersistence, self).__init__(store_user_data=store_user_data,
                                                 store_chat_data=store_chat_data,
                                                 store_bot_data=store_bot_data)
-        self.user_data = defaultdict(int)
+        self.user_data = defaultdict(dict)
         self.chat_data = defaultdict(dict)
         self.bot_data = defaultdict(dict)
         self.conversations = defaultdict(dict)
@@ -28,8 +30,8 @@ class MongodbPersistence(BasePersistence):
     def open_db(self):
         try:
             self.client = MongoClient('mongodb://'+self.db_user+':'+self.db_pass+'@dbh63.mlab.com:27637/'+self.db_name+'?retryWrites=false')
-        except:
-            print("Error while connecting to mongo")
+        except error:
+            print("Error while connecting to mongo", error)
         return self.client[self.db_name]
 
     def close_db(self):
@@ -42,7 +44,8 @@ class MongodbPersistence(BasePersistence):
 
     def get_chat_data(self):
         print('get_chat_data()')
-        return self.chat_data
+        self.chat_data = defaultdict(dict)
+        return deepcopy(self.chat_data)
 
     def get_user_data(self):
         print('get_user_data()')
@@ -51,7 +54,7 @@ class MongodbPersistence(BasePersistence):
         for d in data:
             self.user_data[d['user_id']] = d['lista']
         self.close_db()
-        return self.user_data
+        return deepcopy(self.user_data)
 
     def get_conversations(self, name):
         print('get_conversations()', name)
@@ -64,8 +67,8 @@ class MongodbPersistence(BasePersistence):
         print('update chat data:', chat_id, data)
 
     def update_user_data(self, user_id, data):
-        print('update user data:', user_id, defaultdict(int) if not data else data)
-        doc = {"user_id": user_id, "lista": defaultdict(int) if not data else data}
+        print('update user data:', user_id, defaultdict(dict) if not data else data)
+        doc = {"user_id": user_id, "lista": defaultdict(dict) if not data else data}
         collection = self.open_db().user_data
         collection.replace_one({"user_id": user_id}, doc, upsert=True)
         self.close_db()

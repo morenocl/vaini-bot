@@ -18,8 +18,31 @@ def build_menu(buttons,
 
 def show_menu(update, context):
     button_list = [InlineKeyboardButton(b, callback_data=b) for b in menu_super]
-    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=2))
+    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=4))
     context.bot.send_message(chat_id=update.effective_chat.id, text="Diga:", reply_markup=reply_markup)
+
+def get_items_from_context(context, _id):
+    try:
+        lista = context.user_data[_id]
+    except KeyError:
+        context.user_data[_id] = {}
+        lista = context.user_data[_id]
+    items = []
+    for k in lista:
+        items.append(str(k))
+    return items
+
+def show_button_remover(update, context):
+    _id = str(update.effective_chat.id)
+    items = get_items_from_context(context, _id)
+    print('Lista de botones: ', items)
+    if not items:
+        message_id = update.callback_query.message.message_id
+        context.bot.edit_message_text(text="Primero debe agregar.", chat_id=int(id), message_id=message_id, reply_markup={})
+    else:
+        button_list = [InlineKeyboardButton(b, callback_data=b) for b in items]
+        reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=3))
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Elija",reply_markup=reply_markup)
 
 def back(update, context):
     _id = str(update.effective_chat.id)
@@ -30,6 +53,7 @@ def info(update, context):
     print('Funcion info.')
     _id = str(update.effective_chat.id)
     try:
+        print('User data en info: ', context.user_data)
         user_data = context.user_data[_id]
     except KeyError:
         context.user_data[_id] = {}
@@ -103,10 +127,22 @@ def remove_producto(update, context):
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
+def remove_this(update, context):
+    print('Funcion remove_producto.')
+    item = button = update.callback_query.data
+    _id = str(update.effective_chat.id)
+    del context.user_data[_id][item]
+    context.bot.send_message(chat_id=update.effective_chat.id, text='Eliminaste: ' + item)
+    show_menu(update, context)
+    print('chat: ', context.chat_data)
+    print('user: ', context.user_data)
+
+
 def remove(update, context):
     print('Funcion remove.')
     _id = str(update.effective_chat.id)
     context.chat_data[_id]['state'] = 'remove'
+    show_button_remover(update, context)
     print('chat: ', context.chat_data)
     print('user: ', context.user_data)
 
@@ -124,12 +160,20 @@ def responder_super(update, context):
 
 def super(update, context):
     print('Funcion super.')
+    print(type(context.user_data))
+    print(type(context.chat_data))
     _id = str(update.effective_chat.id)
     try:
         chat_data = context.chat_data[_id]
     except:
         context.chat_data[_id] = {}
         chat_data = context.chat_data[_id]
+    try:
+        user_data = context.user_data[_id]
+    except:
+        context.user_data[_id] = {}
+        user_data = context.user_data[_id]
+
     chat_data['state'] = 'nuevo'
     chat_data['funcion'] = 'super'
     show_menu(update, context)
